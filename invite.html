@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Your Invitation · Kennedy Mutisya Retirement</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#1f4e9c;--gold2:#23824f;--bg:#f9fbfe;--ink:#14213d;--muted:#55607a;--line:#d3e0f1}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);padding:24px 16px 48px}
+.wrap{max-width:720px;margin:auto}
+h1{font-family:"Playfair Display",Georgia,serif;color:var(--gold);margin:0 0 4px;font-size:clamp(26px,6vw,38px);line-height:1.2}
+h2{font-family:"Playfair Display",Georgia,serif;color:var(--gold);font-size:22px;margin:40px 0 6px}
+.sub{color:var(--muted);margin:0 0 20px}
+.card-box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;min-height:200px}
+#card{display:block;width:100%;height:auto;border-radius:8px}
+#card[hidden],#status[hidden],#err[hidden],#nameform[hidden],#__x[hidden]{display:none}
+#status{display:flex;align-items:center;justify-content:center;gap:12px;min-height:180px;color:var(--muted)}
+.spin{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--gold);border-radius:50%;animation:s .9s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+#err{color:#a33;margin:12px 0 0}
+.btn{display:inline-block;font:inherit;font-weight:600;padding:12px 20px;margin:0 8px 8px 0;border-radius:10px;border:0;cursor:pointer;color:#fff;text-decoration:none;background:linear-gradient(135deg,var(--gold),var(--gold2))}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn:focus-visible,input:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+input{font:inherit;width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);margin-bottom:10px}
+.actions{margin-top:16px}
+.map{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff}
+.map iframe{display:block;width:100%;height:360px;border:0}
+.note{color:var(--muted);margin:0 0 12px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:3s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title">You’re invited</h1>
+  <p class="sub" id="sub">Kennedy Mutisya’s retirement celebration · 19 November 2026</p>
+
+  <div class="panel" id="nameform" hidden>
+    <p class="note">Enter your name to create your invitation card.</p>
+    <input id="nm" placeholder="Your full name" maxlength="60" autocomplete="name">
+    <button class="btn" id="nmgo" type="button">Create my card</button>
+  </div>
+
+  <div id="cardwrap">
+    <div class="card-box">
+      <div id="status" role="status" aria-live="polite"><span class="spin" aria-hidden="true"></span><span>Preparing your invitation card…</span></div>
+      <img id="card" alt="Your personalised invitation card" hidden>
+    </div>
+    <p id="err" role="alert" hidden></p>
+    <div class="actions"><button id="dl" class="btn" disabled>Download your card (.jpg)</button></div>
+  </div>
+
+  <h2>Venue</h2>
+  <p class="note">Marula Crest Academy.</p>
+  <div class="map">
+    <iframe id="map" title="Map showing the venue, Marula Crest Academy" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+  </div>
+  <div class="actions"><a id="nav" class="btn" href="#" target="_blank" rel="noopener">Start navigation</a></div>
+</div>
+
+<script>
+/* ---------- CONFIG: edit these only ---------- */
+const CONFIG = {
+  template: "assets/retirement_card_template.jpg",
+  nameX: 0.5, nameY: 0.725,          // where the name is centred (fractions of card size)
+  maxWidthPct: 0.7, fontSizePct: 0.07,
+  fontFamily: '"Playfair Display", Georgia, "Times New Roman", serif',
+  fontWeight: "700", color: "#14284f", jpgQuality: 0.92,
+  SHEET_URL: "https://script.google.com/macros/s/AKfycbxzZ5Itx2Ho5rSe-RwaZQYK1_ayeJiNUdOqMIXFczdyY4HGy_VakKXzzjpP56sdptgM/exec",
+  LAT: null, LNG: null,              // set exact venue coordinates when known
+  placeQuery: "Marula Crest Academy, Kenya"
+};
+/* --------------------------------------- */
+const $ = s => document.querySelector(s);
+const clean = v => String(v || "").replace(/\s+/g, " ").trim().slice(0, 60);
+const params = new URLSearchParams(location.search);
+const guest = clean(params.get("name"));      // this card's owner
+let blobUrl = null, fileName = "kennedy-mutisya-invitation.jpg";
+
+function loadImage(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = () => rej(new Error("Template image not found at " + src));
+    img.src = src;
+  });
+}
+async function buildCard(name) {
+  const img = await loadImage(CONFIG.template);
+  try { await document.fonts.load(CONFIG.fontWeight + " 40px " + CONFIG.fontFamily, name); } catch (e) {}
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const ctx = c.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+  let size = Math.round(c.width * CONFIG.fontSizePct);
+  const maxW = c.width * CONFIG.maxWidthPct;
+  const setFont = () => ctx.font = CONFIG.fontWeight + " " + size + "px " + CONFIG.fontFamily;
+  setFont();
+  while (ctx.measureText(name).width > maxW && size > 12) { size -= 2; setFont(); }
+  ctx.fillStyle = CONFIG.color; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(name, c.width * CONFIG.nameX, c.height * CONFIG.nameY);
+  const blob = await new Promise((res, rej) =>
+    c.toBlob(b => b ? res(b) : rej(new Error("Could not render the card")), "image/jpeg", CONFIG.jpgQuality));
+  return URL.createObjectURL(blob);
+}
+
+(async function init() {
+  if (!guest) {                                  // no name in link: ask for it
+    $("#cardwrap").hidden = true; $("#nameform").hidden = false;
+    const go = () => { const n = clean($("#nm").value); if (n) location.search = "?name=" + encodeURIComponent(n); };
+    $("#nmgo").onclick = go; $("#nm").onkeydown = e => { if (e.key === "Enter") go(); };
+    return;
+  }
+  $("#title").textContent = "Welcome, " + guest;
+  $("#sub").textContent = "You are invited to Kennedy Mutisya’s retirement celebration · 19 November 2026";
+  fileName = "invitation-" + guest.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + ".jpg";
+  try {
+    blobUrl = await buildCard(guest);
+    $("#card").src = blobUrl; $("#card").hidden = false;
+    $("#status").hidden = true; $("#dl").disabled = false;
+  } catch (e) {
+    $("#status").hidden = true;
+    $("#err").textContent = e.message + ". Check that assets/retirement_card_template.jpg exists in the repository.";
+    $("#err").hidden = false;
+  }
+})();
+
+$("#dl").onclick = () => {
+  if (!blobUrl) return;
+  const a = document.createElement("a");
+  a.href = blobUrl; a.download = fileName;
+  document.body.appendChild(a); a.click(); a.remove();
+};
+
+/* Venue map + navigation */
+(function maps() {
+  const hasCoords = typeof CONFIG.LAT === "number" && typeof CONFIG.LNG === "number";
+  const q = hasCoords ? CONFIG.LAT + "," + CONFIG.LNG : CONFIG.placeQuery;
+  $("#map").src = "https://maps.google.com/maps?q=" + encodeURIComponent(q) + "&z=15&output=embed";
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const nav = $("#nav");
+  nav.href = isIOS ? "maps://?daddr=" + encodeURIComponent(q) + "&dirflg=d"
+                   : "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(q) + "&travelmode=driving";
+  if (isIOS) nav.removeAttribute("target");
+})();
+</script>
+</body>
+</html>
